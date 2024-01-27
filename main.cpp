@@ -40,16 +40,16 @@ std::wstring ConvertPixels(cv::Mat& frame, const int cols, const int lines){
             auto colors = GetColorAmount(l, frameLines/lines,
                                           c, frameCols/cols, frame);
             int colorSum = colors[0] + colors[1] + colors[2];
-            colorPrefix = PIXEL_COLORS_PREFIX + std::to_wstring(colors[2]/(totalUnity*64) *64)
-                    + L";" + std::to_wstring(colors[1]/(totalUnity*64) *64)
-                    + L";" + std::to_wstring(colors[0]/(totalUnity*64) *64) + L"m";
+            colorPrefix = PIXEL_COLORS_PREFIX + std::to_wstring(colors[2]/(totalUnity*32) *32)
+                    + L";" + std::to_wstring(colors[1]/(totalUnity*32) *32)
+                    + L";" + std::to_wstring(colors[0]/(totalUnity*32) *32) + L"m";
             if(colorPrefix == prevColorPrefix){
                 colorPrefix = L"";
             } else{
                 prevColorPrefix = colorPrefix;
             }
-            ResultedFrame += colorPrefix + PIXEL_BRIGHTNESS
-                    [PIXEL_BRIGHTNESS.size()-1-(colorSum*PIXEL_BRIGHTNESS.size())/(totalUnity*256*3)];
+            ResultedFrame.append(colorPrefix + PIXEL_BRIGHTNESS
+                    [PIXEL_BRIGHTNESS.size()-1-(colorSum*PIXEL_BRIGHTNESS.size())/(totalUnity*256*3)]);
         }
         ResultedFrame += L"\n";
     }
@@ -68,7 +68,6 @@ int main(int argc, char* argv[]){
         return -1;
     }
 
-    std::ios::sync_with_stdio(false);
     // Set output mode to handle virtual terminal sequences
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     if (hOut == INVALID_HANDLE_VALUE)
@@ -85,9 +84,12 @@ int main(int argc, char* argv[]){
     {
         return GetLastError();
     }
+    std::ios::sync_with_stdio(false);
+    std::cin.tie(NULL);
+    std::cout.tie(NULL);
+    std::wcout.tie(NULL);
 
     const int VIDEO_FPS = video.get(cv::CAP_PROP_FPS);
-
     const int COLS = atoi(argv[1]), LINES = atoi(argv[2]);
 
     std::vector<std::wstring> result;
@@ -96,14 +98,15 @@ int main(int argc, char* argv[]){
         result.push_back(ConvertPixels(frame, COLS, LINES));
     }
     video.release();
-    cv::destroyAllWindows();
     for(auto& asciiFrames: result){
         std::wcout << asciiFrames;
 
-        if (cv::waitKey(1000/VIDEO_FPS) == 'q') {
-            break;
+        if (cv::waitKey(500/VIDEO_FPS) == 'q') {
+            std::wcout << L"\x1b[39m";
+            return 0;
         }
     }
+    std::wcout << L"\x1b[39m";
     system("pause");
     return 0;
 }
