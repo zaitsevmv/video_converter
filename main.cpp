@@ -1,21 +1,77 @@
 #include <iostream>
 #include <vector>
-#include <windows.h>
+#include <thread>
 
 #ifdef _WIN32
     #include <windows.h>
 
-    #include <opencv2/opencv.hpp>
+    #include <opencv2/opencv_modules.hpp>
+    #include <opencv2/core.hpp>
+    #include <opencv2/video.hpp>
+    #include <opencv2/videoio.hpp>
+    #include <opencv2/imgproc.hpp>
+
+    error_status_t FixTerminal(){
+        CONSOLE_SCREEN_BUFFER_INFO csbi;
+        GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (hOut == INVALID_HANDLE_VALUE)
+        {
+            return GetLastError();
+        }
+        DWORD dwMode = 0;
+        if (!GetConsoleMode(hOut, &dwMode))
+        {
+            return GetLastError();
+        }
+        dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        if (!SetConsoleMode(hOut, dwMode))
+        {
+            return GetLastError();
+        }
+        return 0;
+    }
+
+    std::pair<int,int> GetTerminalSize(){
+        CONSOLE_SCREEN_BUFFER_INFO csbi;
+        GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+        return {csbi.srWindow.Bottom - csbi.srWindow.Top,
+            csbi.srWindow.Right - csbi.srWindow.Left};
+    }
+
+    void ClearTerminal() {
+        system("cls");
+    }
+
+    const std::wstring PIXEL_COLORS_PREFIX = L"\x1b[38;2;";
+    const std::wstring PIXEL_COLORS_DEFAULT = L"\x1b[39m";
 #elif __unix__
     #include <opencv4/opencv2/core.hpp>
     #include <opencv4/opencv2/video.hpp>
     #include <opencv4/opencv2/videoio.hpp>
     #include <opencv4/opencv2/imgproc.hpp>
-    #include <opencv4/opencv2/highgui.hpp>
+
+    error_status_t FixTerminal(){
+        return 0;
+    }
+
+    std::pair<int,int> GetTerminalSize(){
+        struct winsize w;
+        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+        printf ("lines %d\n", w.ws_row);
+        printf ("columns %d\n", w.ws_col);
+        return {w.ws_row, w.ws_col};
+    }
+
+    void ClearTerminal() {
+        system("cls");
+    }
+
+    const std::wstring PIXEL_COLORS_PREFIX = L"\033[38;2;";
+    const std::wstring PIXEL_COLORS_DEFAULT = L"\033[39m";
 #endif
 
 const std::wstring PIXEL_BRIGHTNESS = L"@#%&?*+;:^~-_,. ";
-const std::wstring PIXEL_COLORS_PREFIX = L"\x1b[38;2;";
 
 std::vector<int> GetColorAmount(const int& beginRow, const int& stepRow,
                                 const int& beginCol, const int& stepCol, const cv::Mat& frame){
@@ -31,7 +87,7 @@ std::vector<int> GetColorAmount(const int& beginRow, const int& stepRow,
     return sum;
 }
 
-std::wstring ConvertPixels(cv::Mat& frame, const int cols, const int lines){
+std::wstring ConvertPixels(cv::Mat& frame, const int& cols, const int& lines){
     std::wstring ResultedFrame;
     std::wstring colorPrefix, prevColorPrefix;
     int frameCols = frame.cols, frameLines = frame.rows, totalUnity = frameLines/lines*frameCols/cols;
@@ -58,42 +114,29 @@ std::wstring ConvertPixels(cv::Mat& frame, const int cols, const int lines){
 
 int main(int argc, char* argv[]){
     if(argc != 2){
+        std::cout << "Error getting parameters" << std::endl;
         std::cerr << "Error getting parameters" << std::endl;
         return -1;
     }
 
     cv::VideoCapture video(argv[1]);
     if (!video.isOpened()) {
+        std::cout << "Error opening video file." << std::endl;
         std::cerr << "Error opening video file." << std::endl;
         return -1;
     }
 
 
-    system("cls");
-    cv::waitKey(3000) == 13;
+    ClearTerminal();
+    std::chrono::milliseconds startTimer(3000);
+    std::this_thread::sleep_for(startTimer);
     std::cout << "Loading...";
 
+    if(FixTerminal()){
+        std::cerr << GetLastError() << std::endl;
+        return GetLastError();
+    }
 
-    CONSOLE_SCREEN_BUFFER_INFO csbi;
-    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-    const int LINES = 9*(csbi.srWindow.Bottom - csbi.srWindow.Top)/10;
-    const int COLS = 9*(csbi.srWindow.Right - csbi.srWindow.Left)/10;
-
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (hOut == INVALID_HANDLE_VALUE)
-    {
-        return GetLastError();
-    }
-    DWORD dwMode = 0;
-    if (!GetConsoleMode(hOut, &dwMode))
-    {
-        return GetLastError();
-    }
-    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    if (!SetConsoleMode(hOut, dwMode))
-    {
-        return GetLastError();
-    }
     std::ios::sync_with_stdio(false);
     std::cin.tie(NULL);
     std::cout.tie(NULL);
@@ -103,19 +146,29 @@ int main(int argc, char* argv[]){
 
     std::vector<std::wstring> result;
     cv::Mat frame;
-    while(video.read(frame)){
-        result.push_back(ConvertPixels(frame, COLS, LINES));
+    auto terminalSize = GetTerminalSize();
+    int lines = terminalSize.first,
+        cols = terminalSize.second;
+    const int VIDEO_HEIGHT = video.get(cv::CAP_PROP_FRAME_HEIGHT),
+        VIDEO_WIDTH = video.get(cv::CAP_PROP_FRAME_WIDTH);
+
+    if(cols > 2*lines * VIDEO_WIDTH/VIDEO_HEIGHT){
+        cols = 2*lines * VIDEO_WIDTH/VIDEO_HEIGHT;
+    } else if(lines > cols * VIDEO_HEIGHT/VIDEO_WIDTH){
+        lines = cols * VIDEO_HEIGHT/VIDEO_WIDTH;
     }
-    system("cls");
+
+    while(video.read(frame)){
+        result.push_back(ConvertPixels(frame, cols, lines));
+    }
+    ClearTerminal();
     video.release();
+
+    std::chrono::milliseconds latency(1000/VIDEO_FPS);
     for(auto& asciiFrames: result){
         std::wcout << asciiFrames << std::flush;
-
-        if (cv::waitKey(1000/VIDEO_FPS) == 'q') {
-            std::wcout << L"\x1b[39m";
-            return 0;
-        }
+        std::this_thread::sleep_for(latency);
     }
-    std::wcout << L"\x1b[39m";
+    std::wcout << PIXEL_COLORS_DEFAULT;
     return 0;
 }
