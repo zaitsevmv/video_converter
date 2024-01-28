@@ -46,13 +46,16 @@
     const std::wstring PIXEL_COLORS_PREFIX = L"\x1b[38;2;";
     const std::wstring PIXEL_COLORS_DEFAULT = L"\x1b[39m";
 #elif __unix__
+    #include <sys/ioctl.h>
+    #include <unistd.h>
+
     #include <opencv2/opencv_modules.hpp>
     #include <opencv2/core.hpp>
     #include <opencv2/video.hpp>
     #include <opencv2/videoio.hpp>
     #include <opencv2/imgproc.hpp>
 
-    error_status_t FixTerminal(){
+    error_t FixTerminal(){
         return 0;
     }
 
@@ -115,14 +118,12 @@ std::wstring ConvertPixels(cv::Mat& frame, const int& cols, const int& lines){
 
 int main(int argc, char* argv[]){
     if(argc != 2){
-        std::cout << "Error getting parameters" << std::endl;
         std::cerr << "Error getting parameters" << std::endl;
         return -1;
     }
 
-    cv::VideoCapture video(argv[1]);
+    cv::VideoCapture video(argv[1], cv::CAP_FFMPEG);
     if (!video.isOpened()) {
-        std::cout << "Error opening video file." << std::endl;
         std::cerr << "Error opening video file." << std::endl;
         return -1;
     }
@@ -134,8 +135,7 @@ int main(int argc, char* argv[]){
     std::cout << "Loading...";
 
     if(FixTerminal()){
-        std::cerr << GetLastError() << std::endl;
-        return GetLastError();
+        return -1;
     }
 
     std::ios::sync_with_stdio(false);
