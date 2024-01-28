@@ -46,10 +46,11 @@
     const std::wstring PIXEL_COLORS_PREFIX = L"\x1b[38;2;";
     const std::wstring PIXEL_COLORS_DEFAULT = L"\x1b[39m";
 #elif __unix__
-    #include <opencv4/opencv2/core.hpp>
-    #include <opencv4/opencv2/video.hpp>
-    #include <opencv4/opencv2/videoio.hpp>
-    #include <opencv4/opencv2/imgproc.hpp>
+    #include <opencv2/opencv_modules.hpp>
+    #include <opencv2/core.hpp>
+    #include <opencv2/video.hpp>
+    #include <opencv2/videoio.hpp>
+    #include <opencv2/imgproc.hpp>
 
     error_status_t FixTerminal(){
         return 0;
