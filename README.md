@@ -1,4 +1,4 @@
-## Simple realtime video to colorful ASCII converter
+# Simple realtime video to colorful ASCII converter
 
 Usage: test.exe [params] path
 
@@ -10,4 +10,4 @@ Usage: test.exe [params] path
         path (value:<none>)
                 path to file
 
-# FPS will drop if font too small                
+### FPS will drop if font too small                
