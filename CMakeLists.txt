@@ -6,7 +6,7 @@ include(FetchContent)
 FetchContent_Declare(
         opencv
         GIT_REPOSITORY https://github.com/opencv/opencv.git
-        GIT_TAG master
+        GIT_TAG 4.8.1
         GIT_SHALLOW TRUE
         GIT_PROGRESS TRUE
 )
@@ -19,10 +19,14 @@ target_include_directories(test PRIVATE
         ${OPENCV_MODULE_opencv_video_LOCATION}/include
         ${OPENCV_MODULE_opencv_videoio_LOCATION}/include
         ${OPENCV_MODULE_opencv_imgproc_LOCATION}/include
+        ${OPENCV_MODULE_opencv_imgcodecs_LOCATION}/include
+        ${OPENCV_MODULE_opencv_highgui_LOCATION}/include
 )
 target_link_libraries(test
         opencv_core
         opencv_video
         opencv_videoio
         opencv_imgproc
+        opencv_imgcodecs
+        opencv_highgui
 )
