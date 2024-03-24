@@ -107,7 +107,7 @@ std::wstring ConvertPixels(const cv::Mat& frame, const int cols, const int rows)
 int main(int argc, char* argv[]){
     const std::string keys =
         "{@path | <none> | path to file}"
-        "{fps   |        | video fps}"
+        "{fps   |        | video fps(optional)}"
         "{help h|        | help}";
     cv::CommandLineParser parser{argc, argv, keys};
     parser.about("Simple video to ASCII converter");
